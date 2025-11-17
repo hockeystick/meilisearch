@@ -127,7 +127,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(web::scope("/network").configure(network::configure))
         .service(web::scope("/export").configure(export::configure))
         .service(web::scope("/chats").configure(chats::configure))
-        .service(web::scope("/webhooks").configure(webhooks::configure));
+        .service(web::scope("/webhooks").configure(webhooks::configure))
+        .default_service(web::route().to(not_found));
 
     #[cfg(feature = "swagger")]
     {
@@ -596,4 +597,21 @@ pub async fn get_health(
     auth_controller.health().unwrap();
 
     Ok(HttpResponse::Ok().json(HealthResponse::default()))
+}
+
+/// Handle 404 Not Found errors
+///
+/// Returns a user-friendly error message when accessing an undefined route.
+async fn not_found(req: HttpRequest) -> Result<HttpResponse, ResponseError> {
+    let path = req.path();
+    let method = req.method();
+
+    Err(ResponseError::from_msg(
+        format!(
+            "Endpoint `{} {}` does not exist. Available API routes: /health, /version, /stats, /tasks, /indexes, /keys, /dumps, /snapshots. Check out the documentation at https://www.meilisearch.com/docs",
+            method,
+            path
+        ),
+        Code::BadRequest,
+    ))
 }
